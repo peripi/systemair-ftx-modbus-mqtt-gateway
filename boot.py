@@ -2,9 +2,8 @@
 #import esp
 #esp.osdebug(None)
 
-import uos, machine
-uos.dupterm(None, 1) # disable REPL on UART(0)
-
+# import uos, machine
+# uos.dupterm(None, 0) # disable REPL on UART(0)
 
 import gc
 
@@ -26,5 +25,5 @@ while not wlan.isconnected():
 print('connect Wifi True!')
 print(wlan.ifconfig())
 
-import webrepl
-webrepl.start()
+# import webrepl
+# webrepl.start()

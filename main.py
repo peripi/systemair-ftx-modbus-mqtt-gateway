@@ -1,17 +1,24 @@
-from sysair_registers import registers
-regs = registers()
+print('starting main.py')
 
-from machine import Pin, I2C, reset, RTC, Timer, ADC, WDT, UART, unique_id
+import help_functions
+import sysair_registers
+
+from machine import Pin, unique_id
+
 import time
+
 from ubinascii import hexlify
 
 from umqtt.simple import MQTTClient
 
-import uModBusSerial
+# from uModBusSerial_OLD_MODBUS import uModBusSerial
+from umodbus.serial import Serial as ModbusSerial
 
-from pichler_registers import pichler_input_registers
+# from pichler_registers import pichler_input_registers
 
 mqtt_server = '10.9.8.143'
+
+test_values = False     # will omit modbus-read and use test-values prepared from system air registers
 
 #####
 # Schematic/Notes
@@ -31,8 +38,11 @@ mqtt_server = '10.9.8.143'
 #####
 # RS485/modbus via UART
 #####
+print('Before modbus creation')
 
-modbus = uModBusSerial.ModBusSerial(uart_id=1, baudrate=19200, data_bits=8, parity=0, stop_bits=1, pins=[Pin(1),Pin(3)], ctrl_pin=14)
+# modbus = uModBusSerial.ModBusSerial(uart_id=1, baudrate=19200, data_bits=8, parity=0, stop_bits=1, pins=[Pin(17), Pin(16)], ctrl_pin=16)
+modbus = ModbusSerial(uart_id=1, baudrate=19200, data_bits=8, parity=0, stop_bits=1, pins=[Pin(17), Pin(16)], ctrl_pin=16)
+
 print("modbus created")
 #####
 # LG350 connection
@@ -70,7 +80,64 @@ class PichlerLG350:
         results.update({"str3": 34})
         return results
 
-pichler = PichlerLG350(modbus)
+# pichler = PichlerLG350(modbus)
+
+class SysAir400DC:
+    def __init__(self, topic = None, slave_addr:int = 1, test_values=False):
+        if topic is None:
+            self.base_topic = 'system_air_VR400DC_ftx'
+        else:
+            self.base_topic = topic
+
+        self.test_values = test_values
+        self.slave_addr = slave_addr
+        self.registers = sysair_registers.registers()
+        self.mqtt = self.create_mqtt()
+
+    def create_mqtt(self)->MQTTClient:
+        mqtt_client = MQTTClient(server=mqtt_server, client_id=hexlify(unique_id()), user="", password="")
+        mqtt_client.connect()
+        print(f'Mqtt client: {mqtt_client.client_id}, to server: {mqtt_client.server} created')
+        return mqtt_client
+
+    def present_sensors(self):
+        for sensor_topic, register in self.registers.items():
+            if not register.get('include'):
+                continue
+            mb_addr = register.get('mb_addr')
+            scaling = register.get('scaling')
+            if not self.test_values:
+                sensor_value = self.read_input_registers(mb_addr, scaling)
+            else:
+                sensor_value = register.get('test_value')
+            self.publish_to_mqtt(sensor_topic + '/value', sensor_value)
+            register_details = register.get('binary_coded')
+            if register_details is not False:
+                if register_details.get('type') == 'SINGLE':
+                    self.publish_to_mqtt(sensor_topic + '/status',
+                                         str(register_details.get('coding').get(sensor_value)).replace(' ', '_'))
+                    for i, status_item in register_details.get('coding').items():
+                        self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_")}', i == sensor_value)
+                elif register_details.get('type') == 'BINARY':
+                    print(f'Number of reg details: {len(register_details.get("coding"))}')
+                    b = help_functions.int_to_binary(sensor_value)
+                    for i, status_item in register_details.get('coding').items():
+                        bit_value = len(b) > i and b[i] == 1
+                        self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_").replace("/","-")}', bit_value)
+
+    def publish_to_mqtt(self, sensor_topic, value):
+        mqtt_topic = (self.base_topic + '/' + sensor_topic).lower()
+        msg = str(value).lower()
+        print(f'mqtt publish, topic: {mqtt_topic}, value: {msg}')
+        self.mqtt.publish(str(mqtt_topic), msg)
+
+    def read_input_registers(self, mb_addr, scaling)-> float | int:
+        recv_value = modbus.read_input_registers(self.slave_addr, mb_addr, 1)[0]
+        if scaling == 1:
+            return recv_value
+        else:
+            return recv_value / scaling
+
 
 #####
 # MQTT connection
@@ -117,32 +184,31 @@ def connect_mqtt():
 
 def mainloop():
     count = 1
-    # sc = connect_mqtt()
+    sa = SysAir400DC(test_values=test_values)
     errcount = 0 
-    while True:
-        if sc is None:
-            errcount += 1
-            sc = connect_mqtt()
-            continue
-        else:
-            try:
-                sc.publish_luftstufe(pichler.luftstufe)
-                
-                values = pichler.get_input_registers()
-                for name, value in values.items():
-                    sc.publish_generic(name, value)
+    while count < 10:
+        sa.present_sensors()
+        count +=1
 
-                sc.mqtt.check_msg()
-
-            except:
-                errcount += 1
+        #if sa is None:
+        #    print('recreating SA')
+        #    count += 1
+        #    sa = SysAir400DC(test_values=True)
+        #    continue
+        #else:
+        #    try:
+        #        print('attempting publish to mqtt')
+        #        sa.present_sensors()
+#
+        #    except:
+        #        count += 1
 
         #if errcount > 20:
         #    reset()
 
         # wdt.feed()
 
-        time.sleep(5)
+        time.sleep(2)
 
 mainloop()
 

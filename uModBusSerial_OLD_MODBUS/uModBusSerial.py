@@ -100,7 +100,7 @@ class ModBusSerial:
             self._ctrlPin(1)
         self._uart.write(serial_pdu)
         if self._ctrlPin:
-            while not self._uart.wait_tx_done(2):
+            while not self._uart.txdone() .wait_tx_done(2):
                 machine.idle()
             time.sleep_us(0 + int(self.char_time_us * len(serial_pdu)))
             self._ctrlPin(0)
