@@ -1,86 +1,63 @@
-print('starting main.py')
-
 import help_functions
-import sysair_registers
+from sysair_registers import registers as system_air_registers
 
-from machine import Pin, unique_id
-
+from machine import unique_id, WDT
 import time
 
 from ubinascii import hexlify
-
 from umqtt.simple import MQTTClient
-
-# from uModBusSerial_OLD_MODBUS import uModBusSerial
-from umodbus.serial import Serial as ModbusSerial
-
-# from pichler_registers import pichler_input_registers
 
 mqtt_server = '10.9.8.143'
 
+publish_reg_info = True
 test_values = False     # will omit modbus-read and use test-values prepared from system air registers
+update_interval_secs = 30        # interval between mqtt data update
+enable_wdt = True
+wd_timeout = 60  # watch dog timeout
+sysair_mb_addr = 1
+# Modbus settings
+baudrate = 9600
+data_bits = 8
+parity = None
+stop_bits = 1
+rtu_pins = (17, 16)
+ctrl_pin = 19
 
-#####
-# Schematic/Notes
-######
+enable_alive_led = True
+led_pin = 2
 
-# GPIO1 UART TX
-# GPIO3 UART RX
-# GPIO15 TX enable + RX not-enable changed to GPIO14 due to problem to boot (was pulled high)
+ssid = ***REMOVED***
+pw = ***REMOVED***
 
-#####
+import wifi
+ip = wifi.connect_wifi(ssid, pw)
+
+from timer import Timer
+timer = Timer()
+
+if enable_alive_led:
+    from alive_led import AliveLed
+    alive_led = AliveLed(led_pin, 2500, 40)
+
+# ESP 32, Wemos D1 mini
+# GPI17 UART TX to C25B DI - driver input
+# GPI16 UART RX to C25B RO - receiver output
+# GPIO19 ctrl pin
+
+# C25B, TTL to RS485. Note that A/B-markings on the C25B are not correct/confusing.
+# Normal RS485 A(-) should be connected to C25B pin B
+# Normal RS485 B(+) should be connected to C25B pin A
+
 # Watchdog - 60 seconds, need to be larger then loop time below. Works only on ESP32
 # Don't forget to enable wdt.feed() below
-#####
+if enable_wdt:
+    wdt = WDT(timeout=wd_timeout * 1000)
 
-# wdt = WDT(timeout=60000)
-
-#####
-# RS485/modbus via UART
-#####
-print('Before modbus creation')
-
-# modbus = uModBusSerial.ModBusSerial(uart_id=1, baudrate=19200, data_bits=8, parity=0, stop_bits=1, pins=[Pin(17), Pin(16)], ctrl_pin=16)
-modbus = ModbusSerial(uart_id=1, baudrate=19200, data_bits=8, parity=0, stop_bits=1, pins=[Pin(17), Pin(16)], ctrl_pin=16)
-
-print("modbus created")
-#####
-# LG350 connection
-#####
-
-class PichlerLG350:
-    def __init__(self, modbus):
-    #def __init__(self):    
-        self.modbus = modbus
-    
-    @property
-    def luftstufe(self):
-        #value = self.modbus.read_holding_registers(20, 2, 1)[0]
-        value = 132
-        return value
-
-    @luftstufe.setter
-    def luftstufe(self, value):
-        value = int(value)
-        if value >= 0 and value < 4:
-            self.modbus.write_single_register(20, 2, value)
-        else:
-            print("luftstufe out of range")
-
-    def get_input_registers(self):
-        results = {}
-        for name, params in pichler_input_registers.items():
-            if params[3] == True:
-                value = self.modbus.read_input_registers(20, params[0], 1)[0]
-                value += params[1]
-                value *= params[2]
-                results.update({name: value})
-        results.update({"str1": 12})    
-        results.update({"str2": 23})
-        results.update({"str3": 34})
-        return results
-
-# pichler = PichlerLG350(modbus)
+# Source for modbus driver:
+# https://github.com/brainelectronics/micropython-modbus/
+from umodbus.serial import Serial as ModbusRTUMaster
+# modbus = ModbusRTUMaster(uart_id=2, baudrate=9600, data_bits=8, parity=None, stop_bits=1, pins=rtu_pins, ctrl_pin=ctrl_pin)
+modbus = ModbusRTUMaster(baudrate=baudrate, data_bits=data_bits, parity=parity, stop_bits=stop_bits, pins=rtu_pins, ctrl_pin=ctrl_pin)
 
 class SysAir400DC:
     def __init__(self, topic = None, slave_addr:int = 1, test_values=False):
@@ -88,127 +65,144 @@ class SysAir400DC:
             self.base_topic = 'system_air_VR400DC_ftx'
         else:
             self.base_topic = topic
-
         self.test_values = test_values
         self.slave_addr = slave_addr
-        self.registers = sysair_registers.registers()
-        self.mqtt = self.create_mqtt()
+        self.registers = system_air_registers()
+        self.mqtt = self.create_connect_mqtt()
+        self.mqtt.set_callback(self.mqtt_callback)
+        self.subscribe_to_mqtt()
+        self.last_update = None
 
-    def create_mqtt(self)->MQTTClient:
+    def present_sys_info(self):
+        self.publish_to_mqtt('ip',value=ip)
+        time_alive = timer.elapsed_time()
+        self.publish_to_mqtt('time_alive', value=f'{time_alive[0]}d, {time_alive[1]}h, {time_alive[2]}m, {time_alive[3]}s')
+
+    def create_connect_mqtt(self)->MQTTClient:
         mqtt_client = MQTTClient(server=mqtt_server, client_id=hexlify(unique_id()), user="", password="")
         mqtt_client.connect()
-        print(f'Mqtt client: {mqtt_client.client_id}, to server: {mqtt_client.server} created')
+        # print(f'Mqtt client: {mqtt_client.client_id}, to server: {mqtt_client.server} created')
         return mqtt_client
 
+    def mqtt_callback(self, topic, msg):
+        topic = topic.decode()
+        msg = msg.decode()
+        # print(f'Received msg, topic: {topic}, msg: {msg}')
+        sysair_topic = topic.split('/')[1]
+        # print(f'Received msg, sysair_topic: {sysair_topic}, msg: {msg}')
+        register = self.registers.get(sysair_topic)
+        mb_addr = register.get('mb_addr')
+        scaling = register.get('scaling')
+        #print(f'Mb_addr: {register.get("mb_addr")}, scaling: {register.get("scaling")}')
+        try:
+            self.write_register(mb_addr, scaling, msg)
+        except Exception as e:
+            self.publish_to_mqtt(sysair_topic + '/error', value=e)
+            print(f'{e}')
+        # set next mqtt update in one second
+        sec_to_next_update = 1
+        self.last_update = time.ticks_ms() - (update_interval_secs - sec_to_next_update) * 1000
+
+    def subscribe_to_mqtt(self):
+        for sensor_topic, register in self.registers.items():
+            if register.get('read_write') != 'rw':
+                continue
+            mqtt_topic = (self.base_topic + '/' + sensor_topic).lower() + '/set'
+            self.mqtt.subscribe(mqtt_topic)
+
     def present_sensors(self):
+        self.last_update = time.ticks_ms()
         for sensor_topic, register in self.registers.items():
             if not register.get('include'):
                 continue
             mb_addr = register.get('mb_addr')
             scaling = register.get('scaling')
+            access = register.get('read_write')
+            register_details = register.get('binary_coded')
+            # print(f'presenting sensor: {register.get("mqtt_topic")}')
             if not self.test_values:
-                sensor_value = self.read_input_registers(mb_addr, scaling)
+                try:
+                    sensor_value = self.read_holding_registers(mb_addr, scaling)
+                except Exception as e:
+                    self.publish_to_mqtt(sensor_topic + '/error', value=e)
+                    print(e)
+                    continue
             else:
                 sensor_value = register.get('test_value')
-            self.publish_to_mqtt(sensor_topic + '/value', sensor_value)
-            register_details = register.get('binary_coded')
-            if register_details is not False:
-                if register_details.get('type') == 'SINGLE':
-                    self.publish_to_mqtt(sensor_topic + '/status',
-                                         str(register_details.get('coding').get(sensor_value)).replace(' ', '_'))
-                    for i, status_item in register_details.get('coding').items():
-                        self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_")}', i == sensor_value)
-                elif register_details.get('type') == 'BINARY':
-                    print(f'Number of reg details: {len(register_details.get("coding"))}')
-                    b = help_functions.int_to_binary(sensor_value)
-                    for i, status_item in register_details.get('coding').items():
-                        bit_value = len(b) > i and b[i] == 1
-                        self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_").replace("/","-")}', bit_value)
+            if publish_reg_info:
+                self.publish_to_mqtt(sensor_topic + '/reg_info', f'addr= {mb_addr}, div= {scaling}, access: {access}')
+
+            if register_details.get('type') == 'BOOLEAN':
+                self.publish_to_mqtt(sensor_topic + '/value', sensor_value == 1)
+            else:
+                self.publish_to_mqtt(sensor_topic + '/value', sensor_value)
+
+            if register_details.get('type') == 'SINGLE':
+                self.publish_to_mqtt(sensor_topic + '/status',
+                                     str(register_details.get('coding').get(sensor_value)).replace(' ', '_'))
+                for i, status_item in register_details.get('coding').items():
+                    self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_")}', i == sensor_value)
+
+            elif register_details.get('type') == 'BINARY':
+                b = help_functions.int_to_binary(sensor_value)
+                for i, status_item in register_details.get('coding').items():
+                    bit_value = len(b) > i and b[i] == 1
+                    self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_").replace("/","-")}', bit_value)
 
     def publish_to_mqtt(self, sensor_topic, value):
         mqtt_topic = (self.base_topic + '/' + sensor_topic).lower()
         msg = str(value).lower()
-        print(f'mqtt publish, topic: {mqtt_topic}, value: {msg}')
         self.mqtt.publish(str(mqtt_topic), msg)
 
-    def read_input_registers(self, mb_addr, scaling)-> float | int:
-        recv_value = modbus.read_input_registers(self.slave_addr, mb_addr, 1)[0]
+    def read_holding_registers(self, mb_addr, scaling)-> int | float:
+        """
+        :param mb_addr:
+        :param scaling:
+        :return: tuple(read ok, value)
+        """
+        try:
+            recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr, 1, False)[0]
+        except Exception as e:
+            raise OSError(f'Error: {e}, during modbus read addr: {mb_addr}')
         if scaling == 1:
             return recv_value
         else:
             return recv_value / scaling
 
+    def write_register(self, mb_addr, scaling, value):
+        try:
+            if scaling != 1:
+                value = int(value * scaling)
+            else:
+                value = int(value)
+        except Exception as e:
+            raise ValueError(f'Error: {e}, mb_addr: {mb_addr}, value: {value}')
+        try:
+            modbus.write_single_register(self.slave_addr, mb_addr, value, signed=False)
+        except Exception as e:
+            raise OSError(f'Error: {e}, mb_addr: {mb_addr}, value: {value}')
 
-#####
-# MQTT connection
-#####
+def main():
 
-class SensorClient:
-    def __init__(self, sensor, client_id, server):
-        self.sensor = sensor
-        self.mqtt = MQTTClient(client_id, server, user="", password="")
-        self.name = b'myhome/lueftung'
-        self.mqtt.connect()
-        self.mqtt.set_callback(self.callback_mqtt_msg)
-        self.mqtt.subscribe(self.name + b'/set_luftstufe')
+    sysair_ftx = SysAir400DC(test_values=test_values, slave_addr=sysair_mb_addr)
 
-    def publish_luftstufe(self, ls):
-        print("Sending luftstufe = {0}".format(ls))
-        self.mqtt.publish(self.name + b'/luftstufe', str(ls))
+    print(f'Starting mqtt-server: {sysair_ftx.base_topic}')
+    while True:
+        now = time.ticks_ms()
+        sysair_ftx.mqtt.check_msg()
 
-    def publish_generic(self, name, value):
-        print("Sending {0} = {1}".format(name, value))
-        self.mqtt.publish(self.name + b'/' + bytes(name, 'ascii'), str(value))
+        if sysair_ftx.last_update is None or now - sysair_ftx.last_update > update_interval_secs * 1000:
+            sysair_ftx.present_sensors()
+            sysair_ftx.present_sys_info()
 
-    def callback_mqtt_msg(self, topic, msg):
-        print("received MQTT message")
-        print(topic, msg)
-        if topic == self.name + b'/set_luftstufe':
-            pass
-            # pichler.luftstufe = int(msg)  
+        if enable_wdt:
+            wdt.feed()
 
-def connect_mqtt():
-    print("connect mqtt")
-    try:
-        # init_wifi()
-        print("try to connect to MQTT server")        
-        sc_try = SensorClient('lueftung', hexlify(unique_id()), '10.9.8.143')
-    except:
-        sc_try = None
+        if enable_alive_led:
+            alive_led.update()
 
-    return sc_try
+        time.sleep(0.1)
 
-#####
-# Main loop
-#####
+main()
 
-def mainloop():
-    count = 1
-    sa = SysAir400DC(test_values=test_values)
-    errcount = 0 
-    while count < 10:
-        sa.present_sensors()
-        count +=1
-
-        #if sa is None:
-        #    print('recreating SA')
-        #    count += 1
-        #    sa = SysAir400DC(test_values=True)
-        #    continue
-        #else:
-        #    try:
-        #        print('attempting publish to mqtt')
-        #        sa.present_sensors()
-#
-        #    except:
-        #        count += 1
-
-        #if errcount > 20:
-        #    reset()
-
-        # wdt.feed()
-
-        time.sleep(2)
-
-mainloop()
 

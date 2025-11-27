@@ -1,5 +1,6 @@
-# Format
-# "Register name" : [address, scaling, include, R/RW, mqqt-topic]
+# Registers based on follwing
+# https://shop.systemair.com/upload/assets/MODBUS_FOR_RESIDENTIAL_D24810_USER_MANUAL_EN__A007_.PDF?03eb52f3
+
 reg_101_fan_speed_level = {
     'type': 'SINGLE',
     'coding':
@@ -131,41 +132,74 @@ reg_803_regs_alarms_all_detailed = {
         }
 }
 
-# register_headers = ['mqtt_topic', 'mbAddr', 'scaling', 'include', 'read_write', 'binary_coded']
+reg_353_regs_system_rotor_type = {
+    'type': 'SINGLE',
+    'coding' :
+        {
+            0:  'On/Off control',
+            1:  'Variable control',
+        }
+}
+
+reg_boolean = {
+    'type' : 'BOOLEAN'
+}
+
+reg_value = {
+    'type' : 'VALUE'
+}
 
 # list based on the system air naming convention and modbus register address.
 system_air_registers = {
     "headers" : ['sys_air_reg_name', 'mqtt_topic', 'mb_addr', 'scaling', 'include', 'read_write', 'binary_coded', 'test_value'],
     "registers" : [
         ["REG_FAN_SPEED_LEVEL", "FAN_SPEED_LEVEL", 101, 1, True, 'RW', reg_101_fan_speed_level, 2],  # 0: Fans off,1: Fans on low speed,2: Fans on normal speed,3: Fans on high speed,4: Auto mode
-        ["REG_FAN_SF_FLOW_NOM", "FAN_SPEED_AIR_SUPPLY_NOM", 104, 1, True, 'RW', False, 1],  # Supply air fan speed for nominal speed
-        ["REG_FAN_EF_FLOW_NOM", "FAN_SPEED_AIR_EXTRACT_NOM", 105, 1, True, 'RW', False, 2],  # Extract air fan speed for nominal speed
-        ["REG_FAN_SF_PWM", "AIR_FAN_SUPPLY_VOLTAGE", 109, 10, True, 'R', False, 35],  # Supply air fan speed 0..10V
-        ["REG_FAN_EF_PWM", "AIR_FAN_EXTRACT_VOLTAGE", 110, 10, True, 'R', False, 38],  # Extract air fan speed 0..10V
+        ["REG_FAN_SF_FLOW_NOM", "FAN_SPEED_AIR_SUPPLY_NOM", 104, 1, True, 'RW', reg_value, 1],  # Supply air fan speed for nominal speed
+        ["REG_FAN_EF_FLOW_NOM", "FAN_SPEED_AIR_EXTRACT_NOM", 105, 1, True, 'RW', reg_value, 2],  # Extract air fan speed for nominal speed
+        ["REG_FAN_SF_PWM", "AIR_FAN_SUPPLY_VOLTAGE", 109, 10, True, 'R', reg_value, 35],  # Supply air fan speed 0..10V
+        ["REG_FAN_EF_PWM", "AIR_FAN_EXTRACT_VOLTAGE", 110, 10, True, 'R', reg_value, 38],  # Extract air fan speed 0..10V
 
         ["REG_HC_HEATER_TYPE", "HEATER_TYPE", 201, 1, True, 'RW', reg_201_heater_type, 2],  # 0: no heater, 1: Water heater, 2: Electrical heater, 3: Other
         ["REG_HC_TEMP_LVL", 'TEMP_REFERENCE_LEVEL', 207, 1, True, 'RW', reg_207_temp_lvl, 4],  # Temperature set point level: 0: Manual summer mode. 1..5 Temp level
-        ["REG_HC_TEMP_SP", 'TEMP_REFERENCE', 208, 10, True, 'R', False, 184],  # Read . Temperature set point.
-        ["REG_HC_TEMP_IN1", 'TEMP_SUPPLY_AIR', 214, 10, True, 'R', False, 192],  # Temperature. Supply air
-        ["REG_HC_TEMP_IN2", 'TEMP_EXTRACT_AIR', 215, 10, True, 'R', False, 215],  # Temperature. Extract air
+        ["REG_HC_TEMP_SP", 'TEMP_REFERENCE', 208, 10, True, 'R', reg_value, 184],  # Read . Temperature set point.
+        ["REG_HC_TEMP_IN1", 'TEMP_SUPPLY_AIR', 214, 10, True, 'R', reg_value, 192],  # Temperature. Supply air
+        ["REG_HC_TEMP_IN2", 'TEMP_EXTRACT_AIR', 215, 10, True, 'R', reg_value, 215],  # Temperature. Extract air
 
-        ["REG_HC_TEMP_IN3", 'TEMP_EXHAUST_AIR', 216, 10, True, 'R', False, 51],  # Temperature. Exhaust air
-        ["REG_HC_TEMP_IN4", 'TEMP_FROST_HEAT_PROT', 217, 10, True, 'R', False, 190],  # Temperature. Over heating/frost protection
-        ["REG_HC_TEMP_IN5", 'TEMP_OUTDOOR_AIR', 218, 10, True, 'R', False, 23],  # Temperature. Outdoor air
+        ["REG_HC_TEMP_IN3", 'TEMP_EXHAUST_AIR', 216, 10, True, 'R', reg_value, 51],  # Temperature. Exhaust air
+        ["REG_HC_TEMP_IN4", 'TEMP_FROST_HEAT_PROT', 217, 10, True, 'R', reg_value, 190],  # Temperature. Over heating/frost protection
+        ["REG_HC_TEMP_IN5", 'TEMP_OUTDOOR_AIR', 218, 10, True, 'R', reg_value, 23],  # Temperature. Outdoor air
         ["REG_HC_PREHEATER_TYPE", 'PREHEATER_TYPE', 220, 1, True, 'RW', reg_220_pre_heater_type, 0],  # 0: No preheater, 1: Electrical preheater
-        ["REG_DAMPER_PWM", 'DAMPER_PWM', 301, 1, True, 'R', False, 38],  # Output value for exchanger. Unsure of meaning. 0-100, correspond to 0 to 10V.
+        ["REG_DAMPER_PWM", 'DAMPER_PWM', 301, 1, True, 'R', reg_value, 38],  # Output value for exchanger. Unsure of meaning. 0-100, correspond to 0 to 10V.
 
         ["REG_ROTOR_STATE", 'ROTOR_STATE', 351, 1, True, 'R', reg_351_rotor_state, 0],  # 0..11 State for the rotor control state machine. 0: Normal
-        ["REG_SYSTEM_ROTOR_TYPE", 'SYSTEM_ROTOR_TYPE', 353, 1, True, 'RW', False, 0],  # Indicates the type of rotor control: 0: On/off control, 1: Variable control
-        ["REG_FILTER_DAYS", 'FILTER_OPERATION_TIME', 602, 1, True, 'RW', False, 157],  # Elapsed days since last filter replacement
+        # ["REG_SYSTEM_ROTOR_TYPE", 'SYSTEM_ROTOR_TYPE', 353, 1, True, 'RW', reg_353_regs_system_rotor_type, 0],  # Indicates the type of rotor control: 0: On/off control, 1: Variable control
+        ["REG_FILTER_DAYS", 'FILTER_OPERATION_TIME', 602, 1, True, 'RW', reg_value, 157],  # Elapsed days since last filter replacement
 
         ["REG_DEFR_STATE_VR", 'DEFROST_STATE', 671, 1, True, 'R', reg_671_defrost_state_vr, 1],  # State of defrosting state machine. 0: Inactive. 1: Low temperature. 2: Defrosting
         ["REG_DI_ALL", 'STATUS_DI', 701, 1, True, 'R', reg_701_di_all, 5],  # Activation of functions connected to digital inputs
-        ["REG_PCU_PB_RELAYS", 'PCB_RELAYS_STATUS', 711, 1, True, 'R', False, 0],  # 1-prepeater on, 2 reheater on, 3 both.
+        # ["REG_PCU_PB_RELAYS", 'PCB_RELAYS_STATUS', 711, 1, True, 'R', reg_value, 0],  # 1-prepeater on, 2 reheater on, 3 both.
 
         ["REG_ALARMS_ALL", 'ACTIVE_ALARMS_WORD', 801, 1, True, 'R', reg_801_regs_alarms_all_detailed, 256],  # Active alarms
-        ["REG_ALARMS_RELAY_ACTIVE",'ALARM_IS_ACTIVE', 802, 1, True, 'R', False, 0],  # Alarm relay
+        ["REG_ALARMS_RELAY_ACTIVE",'ALARM_IS_ACTIVE', 802, 1, True, 'R', reg_boolean, 0],  # Alarm relay
         ["REG_ALARMS_ALL_DETAILED", 'ALARMS_ALL_DETAILED', 803, 1, True, 'R', reg_803_regs_alarms_all_detailed, 1234]  # All alarm flags, including temperature, sensor status flags.
+    ]
+}
+
+
+# registers used during debugging
+test_registers = {
+    "headers" : ['sys_air_reg_name', 'mqtt_topic', 'mb_addr', 'scaling', 'include', 'read_write', 'binary_coded', 'test_value'],
+    "registers" : [
+        ["REG_FAN_SPEED_LEVEL", "debug_1", 101, 1, True, 'RW', reg_101_fan_speed_level, 2],
+        ["REG_FAN_SPEED_LEVEL", "debug_2", 102, 1, True, 'RW', reg_101_fan_speed_level, 2],
+        ["REG_FAN_SPEED_LEVEL", "debug_3", 103, 1, True, 'RW', reg_101_fan_speed_level, 2],
+        ["REG_FAN_SF_FLOW_NOM", "debug_4", 104, 1, True, 'RW', reg_value, 1],  # Supply air fan speed for nominal speed
+        ["REG_FAN_EF_FLOW_NOM", "debug_5", 105, 1, True, 'RW', reg_value, 2],  # Extract air fan speed for nominal speed
+        ["REG_FAN_SPEED_LEVEL", "debug_6", 106, 1, True, 'RW', reg_101_fan_speed_level, 2],
+        ["REG_FAN_SPEED_LEVEL", "debug_7", 107, 1, True, 'RW', reg_101_fan_speed_level, 2],
+        ["REG_FAN_SPEED_LEVEL", "debug_8", 108, 1, True, 'RW', reg_101_fan_speed_level, 2],
+        ["REG_FAN_SF_PWM", "debug_9", 109, 10, True, 'R', reg_value, 35],  # Supply air fan speed 0..10V
+        ["REG_FAN_EF_PWM", "debug_10", 110, 10, True, 'R', reg_value, 38],  # Extract air fan speed 0..10V
     ]
 }
 
@@ -175,12 +209,17 @@ def registers()->dict:
         returns register as dict, with mqtt topic as key element
     :return:
     """
+    source_registers = system_air_registers
+    # source_registers = system_air_registers
     regs = {}
-    headers = system_air_registers.get('headers')
-    for register in system_air_registers.get('registers'):
+    headers = source_registers.get('headers')
+    for register in source_registers.get('registers'):
         entry = {}
         for i in range(len(register)):
-            entry[headers[i]] = register[i]
+            if isinstance(register[i], str):
+                entry[headers[i]] = register[i].lower()
+            else:
+                entry[headers[i]] = register[i]
         regs[entry.get('mqtt_topic')] = entry
         #regs[entry.get('sys_air_reg_name')] = entry
         # regs[sys_air_register[1]] = entry
@@ -188,6 +227,3 @@ def registers()->dict:
 
 if __name__ == "__main__":
     register = registers()
-        #mqtt_regs[headers[1]] = [].append({headers[i]:register[i]}) for i in range(len(headers))
-
-tet = 12
