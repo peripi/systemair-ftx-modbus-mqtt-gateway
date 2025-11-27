@@ -10,8 +10,8 @@ from umqtt.simple import MQTTClient
 mqtt_server = '10.9.8.143'
 
 publish_reg_info = True
-test_values = False     # will omit modbus-read and use test-values prepared from system air registers
-update_interval_secs = 30        # interval between mqtt data update
+test_values = False                 # will omit modbus-read and use test-values prepared from system air registers
+update_interval_secs = 30           # interval between mqtt data update
 enable_wdt = True
 wd_timeout = 60  # watch dog timeout
 sysair_mb_addr = 1
