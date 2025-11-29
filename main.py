@@ -2,7 +2,8 @@ import help_functions
 from sysair_registers import registers as system_air_registers
 
 from machine import unique_id, WDT
-import time
+# import time
+from time import time, sleep
 
 from ubinascii import hexlify
 from umqtt.simple import MQTTClient
@@ -11,9 +12,11 @@ mqtt_server = '10.9.8.143'
 
 publish_reg_info = True
 test_values = False                 # will omit modbus-read and use test-values prepared from system air registers
-update_interval_secs = 30           # interval between mqtt data update
+modbus_update_interval_secs = 10           # interval between mqtt data update
+mqtt_min_update_interval = 3600    # if value is not updated force an update anyway
 enable_wdt = True
 wd_timeout = 60  # watch dog timeout
+
 sysair_mb_addr = 1
 # Modbus settings
 baudrate = 9600
@@ -28,9 +31,14 @@ led_pin = 2
 
 ssid = ***REMOVED***
 pw = ***REMOVED***
-
 import wifi
 ip = wifi.connect_wifi(ssid, pw)
+
+enable_web_repl = True
+web_repl_pw = ***REMOVED***
+if enable_web_repl:
+    import webrepl
+    webrepl.start(password=web_repl_pw)
 
 from timer import Timer
 timer = Timer()
@@ -101,9 +109,10 @@ class SysAir400DC:
             print(f'{e}')
         # set next mqtt update in one second
         sec_to_next_update = 1
-        self.last_update = time.ticks_ms() - (update_interval_secs - sec_to_next_update) * 1000
+        self.last_update = time() - (modbus_update_interval_secs - sec_to_next_update)
 
     def subscribe_to_mqtt(self):
+        # mark subscription topics with '/set'
         for sensor_topic, register in self.registers.items():
             if register.get('read_write') != 'rw':
                 continue
@@ -111,7 +120,12 @@ class SysAir400DC:
             self.mqtt.subscribe(mqtt_topic)
 
     def present_sensors(self):
-        self.last_update = time.ticks_ms()
+        """
+        if topic=None all topics will be presented
+        :param topic:
+        :return:
+        """
+        self.last_update = time()
         for sensor_topic, register in self.registers.items():
             if not register.get('include'):
                 continue
@@ -119,6 +133,8 @@ class SysAir400DC:
             scaling = register.get('scaling')
             access = register.get('read_write')
             register_details = register.get('binary_coded')
+            last_update = register.get('last_update')
+            last_value = register.get('last_value')
             # print(f'presenting sensor: {register.get("mqtt_topic")}')
             if not self.test_values:
                 try:
@@ -129,6 +145,13 @@ class SysAir400DC:
                     continue
             else:
                 sensor_value = register.get('test_value')
+            now = time()
+            if last_value is not None and last_update is not None:
+                if last_value == sensor_value and now - last_update < mqtt_min_update_interval:
+                    continue  # dont bother to update mqtt
+            register['last_update'] = now
+            register['last_value'] = sensor_value
+            self.registers[sensor_topic] = register
             if publish_reg_info:
                 self.publish_to_mqtt(sensor_topic + '/reg_info', f'addr= {mb_addr}, div= {scaling}, access: {access}')
 
@@ -161,7 +184,7 @@ class SysAir400DC:
         :return: tuple(read ok, value)
         """
         try:
-            recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr, 1, False)[0]
+            recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr-1, 1, False)[0]
         except Exception as e:
             raise OSError(f'Error: {e}, during modbus read addr: {mb_addr}')
         if scaling == 1:
@@ -178,7 +201,7 @@ class SysAir400DC:
         except Exception as e:
             raise ValueError(f'Error: {e}, mb_addr: {mb_addr}, value: {value}')
         try:
-            modbus.write_single_register(self.slave_addr, mb_addr, value, signed=False)
+            modbus.write_single_register(self.slave_addr, mb_addr-1, value, signed=False)
         except Exception as e:
             raise OSError(f'Error: {e}, mb_addr: {mb_addr}, value: {value}')
 
@@ -188,10 +211,10 @@ def main():
 
     print(f'Starting mqtt-server: {sysair_ftx.base_topic}')
     while True:
-        now = time.ticks_ms()
+        now = time()
         sysair_ftx.mqtt.check_msg()
 
-        if sysair_ftx.last_update is None or now - sysair_ftx.last_update > update_interval_secs * 1000:
+        if sysair_ftx.last_update is None or now - sysair_ftx.last_update > modbus_update_interval_secs:
             sysair_ftx.present_sensors()
             sysair_ftx.present_sys_info()
 
@@ -201,8 +224,6 @@ def main():
         if enable_alive_led:
             alive_led.update()
 
-        time.sleep(0.1)
+        sleep(0.5)
 
 main()
-
-
