@@ -164,6 +164,16 @@ reg_353_regs_system_rotor_type = {
         }
 }
 
+reg_751_pcu_pb_relays = {
+    'type': 'BINARY',
+    'coding' :
+        {
+            0:  'none',
+            1:  'Heater on',
+            2:  'Reheater on',
+        }
+}
+
 reg_boolean = {
     'type' : 'BOOLEAN'
 }
@@ -212,12 +222,12 @@ system_air_registers = {
         ["REG_SYSTEM_BOOT_PROG_V_MID", 'REG_SYSTEM_BOOT_PROG_V_MID', 506, 1, True, 'R', reg_value, 0],
         ["REG_SYSTEM_BOOT_PROG_V_LOW", 'REG_SYSTEM_BOOT_PROG_V_LOW', 507, 1, True, 'R', reg_value, 0],
 
-        ["REG_FILTER_DAYS", 'FILTER_OPERATION_TIME', 602, 1, True, 'RW', reg_value, 157],  # Elapsed days since last filter replacement
+        ["REG_FILTER_DAYS", 'FILTER_OPERATION_DAYS', 602, 1, True, 'RW', reg_value, 157],  # Elapsed days since last filter replacement
 
         ["REG_DEFR_STATE_VR", 'DEFROST_STATE', 671, 1, True, 'R', reg_671_defrost_state_vr, 1],  # State of defrosting state machine. 0: Inactive. 1: Low temperature. 2: Defrosting
         ["REG_DEFR_MODE_VR", 'REG_DEFR_MODE_VR', 672, 1, True, 'RW', reg_value, 1],
         ["REG_DI_ALL", 'STATUS_DI', 701, 1, True, 'R', reg_701_di_all, 5],  # Activation of functions connected to digital inputs
-        # ["REG_PCU_PB_RELAYS", 'PCB_RELAYS_STATUS', 711, 1, True, 'R', reg_value, 0],  # 1-prepeater on, 2 reheater on, 3 both.
+        ["REG_PCU_PB_RELAYS", 'PCB_RELAYS_STATUS', 751, 1, True, 'R', reg_751_pcu_pb_relays, 0],  # 1-prepeater on, 2 reheater on, 3 both.
 
         ["REG_ALARMS_ALL", 'ACTIVE_ALARMS_WORD', 801, 1, True, 'R', reg_801_regs_alarms_all_detailed, 256],  # Active alarms
         ["REG_ALARMS_RELAY_ACTIVE",'ALARM_IS_ACTIVE', 802, 1, True, 'R', reg_boolean, 0],  # Alarm relay
