@@ -259,7 +259,6 @@ def registers()->dict:
     :return:
     """
     source_registers = system_air_registers
-    # source_registers = system_air_registers
     regs = {}
     headers = source_registers.get('headers')
     for register in source_registers.get('registers'):
@@ -270,8 +269,6 @@ def registers()->dict:
             else:
                 entry[headers[i]] = register[i]
         regs[entry.get('mqtt_topic')] = entry
-        #regs[entry.get('sys_air_reg_name')] = entry
-        # regs[sys_air_register[1]] = entry
     return regs
 
 if __name__ == "__main__":
