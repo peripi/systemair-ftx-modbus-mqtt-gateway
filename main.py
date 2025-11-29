@@ -101,25 +101,27 @@ class SysAir400DC:
         try:
             self.write_register(mb_addr, scaling, msg)
         except Exception as e:
-            try:
-                error_cnt = int(register.get('error_cnt')) + 1
-            except:
-                error_cnt = 1
-            register['error_cnt'] = error_cnt
-            self.registers[sysair_topic] = register
-            self.publish_to_mqtt(sysair_topic + '/error_cnt', value=error_cnt)
-            self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
             print(f'{e}')
+            self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
+            self.mqtt_count_modbus_error(sysair_topic)
         # set next mqtt update in one second
         sec_to_next_update = 1
         self.last_update = time() - (modbus_update_interval_secs - sec_to_next_update)
 
+    def mqtt_count_modbus_error(self, sysair_topic):
+        register = self.registers[sysair_topic]
+        try:
+            error_cnt = register['error_cnt'] + 1
+        except:
+            error_cnt = 1
+        self.publish_to_mqtt(sysair_topic + '/error_cnt', error_cnt)
+
     def subscribe_to_mqtt(self):
         # mark subscription topics with '/set'
-        for sensor_topic, register in self.registers.items():
+        for sysair_topic, register in self.registers.items():
             if register.get('read_write') != 'rw':
                 continue
-            mqtt_topic = (self.base_topic + '/' + sensor_topic).lower() + '/set'
+            mqtt_topic = (self.base_topic + '/' + sysair_topic).lower() + '/set'
             self.mqtt.subscribe(mqtt_topic)
 
     def present_sensors(self):
@@ -129,7 +131,7 @@ class SysAir400DC:
         :return:
         """
         self.last_update = time()
-        for sensor_topic, register in self.registers.items():
+        for sysair_topic, register in self.registers.items():
             if not register.get('include'):
                 continue
             mb_addr = register.get('mb_addr')
@@ -142,8 +144,9 @@ class SysAir400DC:
                 try:
                     sensor_value = self.read_holding_registers(mb_addr, scaling)
                 except Exception as e:
-                    self.publish_to_mqtt(sensor_topic + '/error', value=e)
                     print(e)
+                    self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
+                    self.mqtt_count_modbus_error(sysair_topic)
                     continue
             else:
                 sensor_value = register.get('test_value')
@@ -153,26 +156,26 @@ class SysAir400DC:
                     continue  # dont bother to update mqtt
             register['last_update'] = now
             register['last_value'] = sensor_value
-            self.registers[sensor_topic] = register
+            self.registers[sysair_topic] = register
             if publish_reg_info:
-                self.publish_to_mqtt(sensor_topic + '/reg_info', f'addr= {mb_addr}, div= {scaling}, access: {access}')
+                self.publish_to_mqtt(sysair_topic + '/reg_info', f'addr= {mb_addr}, div= {scaling}, access: {access}')
 
             if register_details.get('type') == 'BOOLEAN':
-                self.publish_to_mqtt(sensor_topic + '/value', sensor_value == 1)
+                self.publish_to_mqtt(sysair_topic + '/value', sensor_value == 1)
             else:
-                self.publish_to_mqtt(sensor_topic + '/value', sensor_value)
+                self.publish_to_mqtt(sysair_topic + '/value', sensor_value)
 
             if register_details.get('type') == 'SINGLE':
-                self.publish_to_mqtt(sensor_topic + '/status',
+                self.publish_to_mqtt(sysair_topic + '/status',
                                      str(register_details.get('coding').get(sensor_value)).replace(' ', '_'))
                 for i, status_item in register_details.get('coding').items():
-                    self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_")}', i == sensor_value)
+                    self.publish_to_mqtt(f'{sysair_topic}/binary/{status_item.replace(" ", "_")}', i == sensor_value)
 
             elif register_details.get('type') == 'BINARY':
                 b = int_to_binary(sensor_value)
                 for i, status_item in register_details.get('coding').items():
                     bit_value = len(b) > i and b[i] == 1
-                    self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_").replace("/","-")}', bit_value)
+                    self.publish_to_mqtt(f'{sysair_topic}/binary/{status_item.replace(" ", "_").replace("/","-")}', bit_value)
 
     def publish_to_mqtt(self, sensor_topic, value):
         mqtt_topic = (self.base_topic + '/' + sensor_topic).lower()
