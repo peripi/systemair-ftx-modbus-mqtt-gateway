@@ -186,7 +186,7 @@ class SysAir400DC:
         try:
             recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr-1, 1, False)[0]
         except Exception as e:
-            raise OSError(f'Error: {e}, during modbus read addr: {mb_addr}')
+            raise OSError(f'{e}, during modbus read addr: {mb_addr}')
         if scaling == 1:
             return recv_value
         else:
@@ -199,11 +199,11 @@ class SysAir400DC:
             else:
                 value = int(value)
         except Exception as e:
-            raise ValueError(f'Error: {e}, mb_addr: {mb_addr}, value: {value}')
+            raise ValueError(f'{e}, mb_addr: {mb_addr}, value: {value}')
         try:
             modbus.write_single_register(self.slave_addr, mb_addr-1, value, signed=False)
         except Exception as e:
-            raise OSError(f'Error: {e}, mb_addr: {mb_addr}, value: {value}')
+            raise OSError(f'{e}, mb_addr: {mb_addr}, value: {value}')
 
 def main():
 
