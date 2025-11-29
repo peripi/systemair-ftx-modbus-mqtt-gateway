@@ -95,17 +95,21 @@ class SysAir400DC:
     def mqtt_callback(self, topic, msg):
         topic = topic.decode()
         msg = msg.decode()
-        # print(f'Received msg, topic: {topic}, msg: {msg}')
         sysair_topic = topic.split('/')[1]
-        # print(f'Received msg, sysair_topic: {sysair_topic}, msg: {msg}')
         register = self.registers.get(sysair_topic)
         mb_addr = register.get('mb_addr')
         scaling = register.get('scaling')
-        #print(f'Mb_addr: {register.get("mb_addr")}, scaling: {register.get("scaling")}')
         try:
             self.write_register(mb_addr, scaling, msg)
         except Exception as e:
-            self.publish_to_mqtt(sysair_topic + '/error', value=e)
+            try:
+                error_cnt = int(register.get('error_cnt')) + 1
+            except:
+                error_cnt = 1
+            register['error_cnt'] = error_cnt
+            self.registers[sysair_topic] = register
+            self.publish_to_mqtt(sysair_topic + '/error_cnt', value=error_cnt)
+            self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
             print(f'{e}')
         # set next mqtt update in one second
         sec_to_next_update = 1
@@ -135,7 +139,6 @@ class SysAir400DC:
             register_details = register.get('binary_coded')
             last_update = register.get('last_update')
             last_value = register.get('last_value')
-            # print(f'presenting sensor: {register.get("mqtt_topic")}')
             if not self.test_values:
                 try:
                     sensor_value = self.read_holding_registers(mb_addr, scaling)
