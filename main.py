@@ -1,8 +1,7 @@
-import help_functions
+import int_to_binary
 from sysair_registers import registers as system_air_registers
-
+from int_to_binary import int_to_binary
 from machine import unique_id, WDT
-# import time
 from time import time, sleep
 
 from ubinascii import hexlify
@@ -170,7 +169,7 @@ class SysAir400DC:
                     self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_")}', i == sensor_value)
 
             elif register_details.get('type') == 'BINARY':
-                b = help_functions.int_to_binary(sensor_value)
+                b = int_to_binary(sensor_value)
                 for i, status_item in register_details.get('coding').items():
                     bit_value = len(b) > i and b[i] == 1
                     self.publish_to_mqtt(f'{sensor_topic}/binary/{status_item.replace(" ", "_").replace("/","-")}', bit_value)

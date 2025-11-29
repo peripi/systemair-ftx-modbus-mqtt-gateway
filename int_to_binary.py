@@ -1,5 +1,3 @@
-
-
 def int_to_binary(value:int)->list:
     """
     :param value: the integer that should be converted bo bit
