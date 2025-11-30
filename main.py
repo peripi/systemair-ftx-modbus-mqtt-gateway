@@ -1,5 +1,7 @@
 import int_to_binary
 from sysair_registers import registers as system_air_registers
+
+import secrets
 from int_to_binary import int_to_binary
 from machine import unique_id, WDT
 from time import time, sleep
@@ -28,16 +30,16 @@ ctrl_pin = 19
 enable_alive_led = True
 led_pin = 2
 
-ssid = 'SSID'
-pw = '******'
+ssid = secrets.wifi_SSID
+pw = secrets.wifi_pw
 import wifi
 ip = wifi.connect_wifi(ssid, pw)
 
 enable_web_repl = True
-web_repl_pw = ***REMOVED***
+
 if enable_web_repl:
     import webrepl
-    webrepl.start(password=web_repl_pw)
+    webrepl.start(password=secrets.web_repl_pw)
 
 from timer import Timer
 timer = Timer()
