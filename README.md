@@ -3,7 +3,7 @@ A modbus mqtt gateway based on micropython for System Air residental ftx units
 
 Modbus library from https://github.com/brainelectronics/micropython-modbus
 
-Tested on ESP32 (Wemos D1 mini) + RS485 (C25B) module
+Tested on ESP32 (Wemos D1 mini) + RS485 (C25B) module. I tried to download to ESP8266 as well, this did not work for me, suspect limited by available memory.
  * GPIO-17 UART TX to C25B DI - driver input
  * GPIO-16 UART RX to C25B RO - receiver output
  * GPIO-19 ctrl pin
