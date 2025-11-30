@@ -1,5 +1,6 @@
 
 __pycache__/
 /secrets.py
+/password_secrets.txt
 
 password_secrets.txt
