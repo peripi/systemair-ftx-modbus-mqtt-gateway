@@ -11,6 +11,7 @@ Tested on ESP32 (Wemos D1 mini) + RS485 (C25B) module. I tried to download to ES
 C25B, TTL to RS485. Note that A/B-markings on the C25B (at least the one I used) are not correct/confusing.
  * Normal RS485 A(-) should be connected to C25B pin B
  * Normal RS485 B(+) should be connected to C25B pin A
+ * I measured 120 Ohms over A-B so suspect these drivers come prefitted with terminal resistors. I did not add any external resistor.
 
 Registers to be shown by mqtt according to document MODBUS_FOR_RESIDENTIAL_D24810_USER_MANUAL_EN__A007_.PDF found on systemairs webpage editable in sysair_registers.py
 
