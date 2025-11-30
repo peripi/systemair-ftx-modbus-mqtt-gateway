@@ -30,8 +30,8 @@ ctrl_pin = 19
 enable_alive_led = True
 led_pin = 2
 
-ssid = ***REMOVED***
-pw = ***REMOVED***
+ssid = 'HEMMA'
+pw = 'perraperra'
 import wifi
 ip = wifi.connect_wifi(ssid, pw)
 
@@ -39,7 +39,7 @@ enable_web_repl = True
 
 if enable_web_repl:
     import webrepl
-    webrepl.start(password=***REMOVED***)
+    webrepl.start(password='eN3CrUcKEQcy2n')
 
 from timer import Timer
 timer = Timer()
