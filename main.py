@@ -171,6 +171,7 @@ class SysAir400DC:
                 self.publish_to_mqtt(sysair_topic + '/error_cnt', register.get('error_cnt'))
             if publish_reg_info:
                 self.publish_to_mqtt(sysair_topic + '/reg_info', f'addr= {mb_addr}, div= {scaling}, access: {access}')
+
             if register_details.get('type') == 'BOOLEAN':
                 self.publish_to_mqtt(sysair_topic + '/value', sensor_value == 1)
             else:
