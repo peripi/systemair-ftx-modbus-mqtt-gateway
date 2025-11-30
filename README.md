@@ -26,7 +26,7 @@ Exposes:
 * status, (=text if binary coded registers)
 * set, (will receive value in case register accepts write)
 
-![alt text](https://github.com/peripi/systemair-ftx-modbus-mqtt-gateway/img/system_air_mqtt.png?raw=true)
+![view in mqtt explorer](https://github.com/peripi/systemair-ftx-modbus-mqtt-gateway/blob/prod/img/system_air_mqtt.png?raw=true)
 
 
 
