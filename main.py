@@ -28,8 +28,8 @@ ctrl_pin = 19
 enable_alive_led = True
 led_pin = 2
 
-ssid = ***REMOVED***
-pw = ***REMOVED***
+ssid = 'SSID'
+pw = '******'
 import wifi
 ip = wifi.connect_wifi(ssid, pw)
 
