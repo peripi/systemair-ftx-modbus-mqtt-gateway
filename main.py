@@ -247,10 +247,10 @@ def main():
 start_delay = 6
 print(f'Starting in:')
 while True:
-    sleep(1)
-    start_delay -=1
     if start_delay == 0:
         break
     print(f'{start_delay}')
+    sleep(1)
+    start_delay -=1
 
 main()
