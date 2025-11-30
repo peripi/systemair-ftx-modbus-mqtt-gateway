@@ -95,6 +95,9 @@ class SysAir400DC:
         topic = topic.decode()
         msg = msg.decode()
         sysair_topic = topic.split('/')[1]
+        if sysair_topic == 'send_all':
+            self.present_sensors(send_all=True)
+            return
         register = self.registers.get(sysair_topic)
         mb_addr = register.get('mb_addr')
         scaling = register.get('scaling')
@@ -103,17 +106,19 @@ class SysAir400DC:
         except Exception as e:
             print(f'{e}')
             self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
-            self.mqtt_count_modbus_error(sysair_topic)
+            self.mqtt_count_modbus_error(sysair_topic, str(e))
         # set next mqtt update in one second
         sec_to_next_update = 1
         self.last_update = time() - (modbus_update_interval_secs - sec_to_next_update)
 
-    def mqtt_count_modbus_error(self, sysair_topic):
+    def mqtt_count_modbus_error(self, sysair_topic, error:str):
         register = self.registers[sysair_topic]
+        register['last_error'] = error
         try:
             error_cnt = register['error_cnt'] + 1
         except:
             error_cnt = 1
+        self.registers[sysair_topic] = register
         self.publish_to_mqtt(sysair_topic + '/error_cnt', error_cnt)
 
     def subscribe_to_mqtt(self):
@@ -123,8 +128,9 @@ class SysAir400DC:
                 continue
             mqtt_topic = (self.base_topic + '/' + sysair_topic).lower() + '/set'
             self.mqtt.subscribe(mqtt_topic)
+        self.mqtt.subscribe(self.base_topic + '/send_all')
 
-    def present_sensors(self):
+    def present_sensors(self, send_all = False):
         """
         if topic=None all topics will be presented
         :param topic:
@@ -146,20 +152,25 @@ class SysAir400DC:
                 except Exception as e:
                     print(e)
                     self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
-                    self.mqtt_count_modbus_error(sysair_topic)
+                    self.mqtt_count_modbus_error(sysair_topic, str(e))
                     continue
             else:
                 sensor_value = register.get('test_value')
             now = time()
-            if last_value is not None and last_update is not None:
-                if last_value == sensor_value and now - last_update < mqtt_min_update_interval:
-                    continue  # dont bother to update mqtt
+            if (send_all is False and
+                    last_value is not None and
+                    last_value == sensor_value and
+                    now - last_update < mqtt_min_update_interval):
+                continue  # dont bother to update mqtt
             register['last_update'] = now
             register['last_value'] = sensor_value
             self.registers[sysair_topic] = register
+            last_error = register.get('last_error')
+            if last_error is not None:
+                self.publish_to_mqtt(sysair_topic + '/last_error', last_error)
+                self.publish_to_mqtt(sysair_topic + '/error_cnt', register.get('error_cnt'))
             if publish_reg_info:
                 self.publish_to_mqtt(sysair_topic + '/reg_info', f'addr= {mb_addr}, div= {scaling}, access: {access}')
-
             if register_details.get('type') == 'BOOLEAN':
                 self.publish_to_mqtt(sysair_topic + '/value', sensor_value == 1)
             else:
