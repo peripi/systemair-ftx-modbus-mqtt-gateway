@@ -28,8 +28,8 @@ ctrl_pin = 19
 enable_alive_led = True
 led_pin = 2
 
-ssid = 'SSID'
-pw = '******'
+ssid = ***REMOVED***
+pw = ***REMOVED***
 import wifi
 ip = wifi.connect_wifi(ssid, pw)
 
@@ -95,6 +95,7 @@ class SysAir400DC:
         topic = topic.decode()
         msg = msg.decode()
         sysair_topic = topic.split('/')[1]
+        print(f'mqtt callback, topic {sysair_topic} received')
         if sysair_topic == 'send_all':
             self.present_sensors(send_all=True)
             return
@@ -128,6 +129,7 @@ class SysAir400DC:
                 continue
             mqtt_topic = (self.base_topic + '/' + sysair_topic).lower() + '/set'
             self.mqtt.subscribe(mqtt_topic)
+        print(f'mqtt subscribe: {self.base_topic + "/send_all"}')
         self.mqtt.subscribe(self.base_topic + '/send_all')
 
     def present_sensors(self, send_all = False):
@@ -242,5 +244,13 @@ def main():
             alive_led.update()
 
         sleep(0.5)
+
+# delay start with some seconds to allow WebREPL to connect
+cnt = 0
+while True:
+    cnt +=1
+    if cnt > 10:
+        continue
+    sleep(0.5)
 
 main()
