@@ -253,7 +253,7 @@ test_registers = {
 }
 
 #dictionary with mqtt-topic as key
-def registers()->dict:
+def compile_registers()->dict:
     """
         returns register as dict, with mqtt topic as key element
     :return:
@@ -272,4 +272,4 @@ def registers()->dict:
     return regs
 
 if __name__ == "__main__":
-    register = registers()
+    register = compile_registers()

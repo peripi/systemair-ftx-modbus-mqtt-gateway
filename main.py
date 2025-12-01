@@ -1,7 +1,6 @@
 import int_to_binary
-from sysair_registers import registers as system_air_registers
+from sysair_registers import compile_registers as system_air_registers
 
-import secrets
 from int_to_binary import int_to_binary
 from machine import unique_id, WDT
 from time import time, sleep
@@ -39,7 +38,7 @@ enable_web_repl = True
 
 if enable_web_repl:
     import webrepl
-    webrepl.start(password='eN3CrUcKEQcy2n')
+    webrepl.start(password='eN3CrUcK')
 
 from timer import Timer
 timer = Timer()
@@ -116,10 +115,11 @@ class SysAir400DC:
     def mqtt_count_modbus_error(self, sysair_topic, error:str):
         register = self.registers[sysair_topic]
         register['last_error'] = error
-        try:
-            error_cnt = register['error_cnt'] + 1
-        except:
-            error_cnt = 1
+        error_cnt = register.get('error_cnt')
+        if error_cnt is None:
+            error_cnt = 0
+        error_cnt +=1
+        register['error_cnt'] = error_cnt
         self.registers[sysair_topic] = register
         self.publish_to_mqtt(sysair_topic + '/error_cnt', error_cnt)
 
@@ -205,7 +205,7 @@ class SysAir400DC:
         try:
             recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr-1, 1, False)[0]
         except Exception as e:
-            raise OSError(f'{e}, during modbus read addr: {mb_addr}')
+            raise OSError(f'{e}, mb read addr: {mb_addr}')
         if scaling == 1:
             return recv_value
         else:
@@ -218,11 +218,11 @@ class SysAir400DC:
             else:
                 value = int(value)
         except Exception as e:
-            raise ValueError(f'{e}, mb_addr: {mb_addr}, value: {value}')
+            raise ValueError(f'{e}, mb write, mb_addr: {mb_addr}, value: {value}')
         try:
             modbus.write_single_register(self.slave_addr, mb_addr-1, value, signed=False)
         except Exception as e:
-            raise OSError(f'{e}, mb_addr: {mb_addr}, value: {value}')
+            raise OSError(f'{e}, mb write, mb_addr: {mb_addr}, value: {value}')
 
 def main():
 
