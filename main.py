@@ -213,7 +213,7 @@ class SysAir400DC:
     def write_register(self, mb_addr, scaling, value):
         try:
             if scaling != 1:
-                value = int(value * scaling)
+                value = int(float(value) * scaling)
             else:
                 value = int(value)
         except Exception as e:
