@@ -106,13 +106,13 @@ class SysAir400DC:
             self.write_register(mb_addr, scaling, msg)
         except Exception as e:
             print(f'{e}')
-            self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
             self.mqtt_count_modbus_error(sysair_topic, str(e))
         # set next mqtt update in one second
         sec_to_next_update = 1
         self.last_update = time() - (modbus_update_interval_secs - sec_to_next_update)
 
     def mqtt_count_modbus_error(self, sysair_topic, error:str):
+        self.publish_to_mqtt(sysair_topic + '/last_error', value=error)
         register = self.registers[sysair_topic]
         register['last_error'] = error
         error_cnt = register.get('error_cnt')
@@ -153,7 +153,6 @@ class SysAir400DC:
                     sensor_value = self.read_holding_registers(mb_addr, scaling)
                 except Exception as e:
                     print(e)
-                    self.publish_to_mqtt(sysair_topic + '/last_error', value=e)
                     self.mqtt_count_modbus_error(sysair_topic, str(e))
                     continue
             else:
@@ -214,7 +213,7 @@ class SysAir400DC:
     def write_register(self, mb_addr, scaling, value):
         try:
             if scaling != 1:
-                value = int(value * scaling)
+                value = int(float(value) * scaling)
             else:
                 value = int(value)
         except Exception as e:

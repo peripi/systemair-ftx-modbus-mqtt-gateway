@@ -208,6 +208,15 @@ system_air_registers = {
         ["REG_HC_TEMP_IN4", 'TEMP_FROST_HEAT_PROT', 217, 10, True, 'R', reg_value, 190],  # Temperature. Over heating/frost protection
         ["REG_HC_TEMP_IN5", 'TEMP_OUTDOOR_AIR', 218, 10, True, 'R', reg_value, 23],  # Temperature. Outdoor air
 
+        ["REG_HC_TEMP_SP_DEG", 'TEMP_SP_DEG', 222, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_INTERVAL_COOLING_LOW", 'REG_HC_INTERVAL_COOLING_LOW', 223, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_INTERVAL_COOLING_HIGH", 'REG_HC_INTERVAL_COOLING_HIGH', 224, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_INTERVAL_EXCHANGING_LOW", 'REG_HC_INTERVAL_EXCHANGING_LOW', 225, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_INTERVAL_EXCHANGING_HIGH", 'REG_HC_INTERVAL_EXCHANGING_HIGH', 226, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_INTERVAL_HEATING_LOW", 'REG_HC_INTERVAL_HEATING_LOW', 227, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_INTERVAL_HEATING_HIGH", 'REG_HC_INTERVAL_HEATING_HIGH', 228, 10, True, 'RW', reg_value, 23],
+        ["REG_HC_OUT", 'REG_HC_OUT', 234, 10, True, 'R', reg_value, 23],
+
         ["REG_HC_PREHEATER_TYPE", 'PREHEATER_TYPE', 220, 1, True, 'RW', reg_220_pre_heater_type, 0],  # 0: No preheater, 1: Electrical preheater
         ["REG_DAMPER_PWM", 'DAMPER_VOLTAGE', 301, 10, True, 'R', reg_value, 38],  # Output value for exchanger. Unsure of meaning. 0-100, correspond to 0 to 10V.
         ["REG_ROTOR_STATE", 'ROTOR_STATE', 351, 1, True, 'R', reg_351_rotor_state, 0],  # 0..11 State for the rotor control state machine. 0: Normal
