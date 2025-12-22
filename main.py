@@ -1,7 +1,7 @@
 import int_to_binary
 from sysair_registers import compile_registers as system_air_registers
 
-from int_to_binary import int_to_binary
+from int_to_binary import int_to_binary, uint_to_sint
 from machine import unique_id, WDT
 from time import time, sleep
 
@@ -148,7 +148,7 @@ class SysAir400DC:
             register_details = register.get('binary_coded')
             last_update = register.get('last_update')
             last_value = register.get('last_value')
-            reg_type = register.get('type')
+            reg_type = register_details.get('type')
             signed = reg_type == 'SIGNED_VALUE'
             if not self.test_values:
                 try:
