@@ -182,6 +182,10 @@ reg_value = {
     'type' : 'VALUE'
 }
 
+reg_signed_value = {
+    'type' : 'SIGNED_VALUE'
+}
+
 # list based on the system air naming convention and modbus register address.
 system_air_registers = {
     "headers" : ['sys_air_reg_name', 'mqtt_topic', 'mb_addr', 'scaling', 'include', 'read_write', 'binary_coded', 'test_value'],
@@ -202,11 +206,11 @@ system_air_registers = {
         ["REG_HC_TEMP_LVL", 'TEMP_REFERENCE_LEVEL', 207, 1, True, 'RW', reg_207_temp_lvl, 4],  # Temperature set point level: 0: Manual summer mode. 1..5 Temp level
         ["REG_HC_TEMP_SP", 'TEMP_REFERENCE', 208, 10, True, 'R', reg_value, 184],  # Read . Temperature set point.
 
-        ["REG_HC_TEMP_IN1", 'TEMP_SUPPLY_AIR', 214, 10, True, 'R', reg_value, 192],  # Temperature. Supply air
-        ["REG_HC_TEMP_IN2", 'TEMP_EXTRACT_AIR', 215, 10, True, 'R', reg_value, 215],  # Temperature. Extract air
-        ["REG_HC_TEMP_IN3", 'TEMP_EXHAUST_AIR', 216, 10, True, 'R', reg_value, 51],  # Temperature. Exhaust air
-        ["REG_HC_TEMP_IN4", 'TEMP_FROST_HEAT_PROT', 217, 10, True, 'R', reg_value, 190],  # Temperature. Over heating/frost protection
-        ["REG_HC_TEMP_IN5", 'TEMP_OUTDOOR_AIR', 218, 10, True, 'R', reg_value, 23],  # Temperature. Outdoor air
+        ["REG_HC_TEMP_IN1", 'TEMP_SUPPLY_AIR', 214, 10, True, 'R', reg_signed_value, 192],  # Temperature. Supply air
+        ["REG_HC_TEMP_IN2", 'TEMP_EXTRACT_AIR', 215, 10, True, 'R', reg_signed_value, 215],  # Temperature. Extract air
+        ["REG_HC_TEMP_IN3", 'TEMP_EXHAUST_AIR', 216, 10, True, 'R', reg_signed_value, 51],  # Temperature. Exhaust air
+        ["REG_HC_TEMP_IN4", 'TEMP_FROST_HEAT_PROT', 217, 10, True, 'R', reg_signed_value, 190],  # Temperature. Over heating/frost protection
+        ["REG_HC_TEMP_IN5", 'TEMP_OUTDOOR_AIR', 218, 10, True, 'R', reg_signed_value, 23],  # Temperature. Outdoor air
 
         ["REG_HC_TEMP_SP_DEG", 'TEMP_SP_DEG', 222, 10, True, 'RW', reg_value, 23],
         ["REG_HC_INTERVAL_COOLING_LOW", 'REG_HC_INTERVAL_COOLING_LOW', 223, 10, True, 'RW', reg_value, 23],
