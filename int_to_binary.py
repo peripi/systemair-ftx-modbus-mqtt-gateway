@@ -12,6 +12,11 @@ def int_to_binary(value:int)->list:
 MAX_SINT = 1 << 15
 
 def uint_to_sint(uint:int)->int:
+    """
+    from unsigned to signed 16-bit integer
+    :param uint:
+    :return:
+    """
     if uint < MAX_SINT:
         return uint
     else:
