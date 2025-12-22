@@ -148,9 +148,11 @@ class SysAir400DC:
             register_details = register.get('binary_coded')
             last_update = register.get('last_update')
             last_value = register.get('last_value')
+            reg_type = register.get('type')
+            signed = reg_type == 'SIGNED_VALUE'
             if not self.test_values:
                 try:
-                    sensor_value = self.read_holding_registers(mb_addr, scaling)
+                    sensor_value = self.read_holding_registers(mb_addr, scaling, signed)
                 except Exception as e:
                     print(e)
                     self.mqtt_count_modbus_error(sysair_topic, str(e))
@@ -195,14 +197,15 @@ class SysAir400DC:
         msg = str(value).lower()
         self.mqtt.publish(str(mqtt_topic), msg)
 
-    def read_holding_registers(self, mb_addr, scaling)-> int | float:
+    def read_holding_registers(self, mb_addr, scaling, signed=False)-> int | float:
         """
+        :param signed:
         :param mb_addr:
         :param scaling:
         :return: tuple(read ok, value)
         """
         try:
-            recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr-1, 1, False)[0]
+            recv_value = modbus.read_holding_registers(self.slave_addr, mb_addr-1, 1, signed)[0]
         except Exception as e:
             raise OSError(f'{e}, mb read addr: {mb_addr}')
         if scaling == 1:
